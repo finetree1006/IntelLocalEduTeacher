@@ -1,3 +1,4 @@
+
 package com.edu.error.controller;
 
 import org.slf4j.Logger;
@@ -6,6 +7,8 @@ import org.springframework.boot.web.servlet.error.ErrorController;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
+
+import com.edu.freeBoard.controller.FreeBoardController;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -33,3 +36,4 @@ public class CustomErrorController implements ErrorController{
 	}
 	
 }
+

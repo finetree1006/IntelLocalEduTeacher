@@ -1,3 +1,4 @@
+
 <%@ page language="java" contentType="text/html; charset=UTF-8"
     pageEncoding="UTF-8"%>
 <!DOCTYPE html>
@@ -20,9 +21,7 @@
 </script>
 
 </head>
-<%
-	String msg1 = (String)request.getAttribute("caseByCase");
-%>
+
 
 <body>
 	<h1>시스템 오류</h1>
@@ -30,12 +29,12 @@
 		요청을 처리하는 중에 문제가 발생하였습니다.
 		잠시 후 다시 이용해 주세요.
 		만약 계속해서 이 문제가 발생된다면
-		시스템 운영팀(사내번호: 8282)에연락하기 바랍니다.
+		시스템 운영팀(사내번호: 8282)에 연락하기 바랍니다.
 	</pre>
-	
 	
 <!-- 	<button onclick="pageMoveMemberListFnc();">회원목록으로 이동</button> -->
 
 
 </body>
+
 </html>
