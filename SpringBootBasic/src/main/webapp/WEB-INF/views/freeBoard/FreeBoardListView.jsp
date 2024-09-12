@@ -74,13 +74,24 @@ tr > th{
 			+ freeBoardFileList[i].freeBoardFileSize + '(kb)'
 			+ '<img alt="image not found" src="/img/' 
 			+ freeBoardFileList[i].storedFileName 
-			+ '" style="width: 150px;" />'
+			+ '" style="width: 150px;" fileId="'
+			+ freeBoardFileList[i].freeBoardFileId+'"/>'
 			+ '<span><input type="button" value="수정">'
-			+ '<input type="button" value="삭제"></span>';
+			+ '<input type="button" value="삭제" id="imgFileDel'+i+'"></span>';
 			
 			listItem.innerHTML = liHtmlStr;
 			storeFileListUl.append(listItem);
 		}
+		
+		$('input[id^="imgFileDel"]').on('click', function (e) {
+			e.preventDefault();
+			
+			var parentLi = $(this).closest('li');
+			var imgTag = parentLi.find('img');
+			
+			parentLi.html('<span delFileId="' 
+				+imgTag.attr('fileId') + '">이미지가 삭제되었습니다</span>');
+		});	
 	} // 파일 ui제작 함수 end
 	
 
@@ -125,7 +136,7 @@ tr > th{
 	
 	htmlStr += '<div>';
 	htmlStr += '<span>';
-	htmlStr += '<button onclick="pageMoveFreeBoardListFnc();">이전페이지</button>';
+	htmlStr += '<button onclick="pageMoveFreeBoardListFnc(1);">이전페이지</button>';
 	htmlStr += '<button id="btnFreeBoardInsert">작성완료</button>';
 	htmlStr += '</span>';
 	htmlStr += '</div>';
@@ -216,14 +227,19 @@ tr > th{
 		let freeBoardIdStr = parentTr.children().eq(0).text();
 // 		alert('freeBoardIdStr: ' + freeBoardIdStr);
 		
+		var curPageInput = $('#curPage');
+		
 		$.ajax({
-			url: '/freeBoard/' + freeBoardIdStr,
+			url: '/freeBoard/' + freeBoardIdStr + '?curPage=' + curPageInput.val(),
 			method: 'GET',
 			dataType: 'json',
 			success: function (data) {
 // 				alert('일단 여기 도착하나? '+ data);
 				var freeBoardVo = data.freeBoardVo;
 				var freeBoardFileList = data.freeBoardFileList;
+				var curPageStr = data.curPage;
+				
+				console.log('curPageStr: ' + curPageStr);
 				
 				let createDate = new Date(freeBoardVo.createDate)
 					.toLocaleString('ko-KR', {
@@ -234,6 +250,8 @@ tr > th{
 					minute: '2-digit',
 					second: '2-digit'
 				});
+				
+				
 				
 				let containerTag = $('#container');
 				let htmlStr = '';
@@ -291,15 +309,21 @@ tr > th{
 	if(freeBoardVo.memberNo == inputSessionMemberNoTag.val()){
 		htmlStr += '<div>';
 		htmlStr += '<span>';
-	htmlStr += '<button onclick="pageMoveFreeBoardListFnc();">이전페이지</button>';
+	htmlStr += '<button onclick="pageMoveFreeBoardListFnc('+curPageStr+');">이전페이지</button>';
 	htmlStr += '<button onclick="restRequestFreeBoardUpdateCtrFnc();">';
 		htmlStr += '수정완료</button>';
+		
+		htmlStr += '<input type="button" value="삭제하기" ';
+		htmlStr += 'onclick="restRequestFreeBoardDeleteCtrFnc('
+				+ freeBoardVo.freeBoardId + ', ' + freeBoardVo.memberNo + ', ' 
+				+ curPageStr + ');">';
+				
 		htmlStr += '</span>';
 		htmlStr += '</div>';
 	}else{
 		htmlStr += '<div>';
 		htmlStr += '<span>';
-	htmlStr += '<button onclick="pageMoveFreeBoardListFnc();">이전페이지</button>';
+	htmlStr += '<button onclick="pageMoveFreeBoardListFnc('+curPageStr+');">이전페이지</button>';
 		htmlStr += '</span>';
 		htmlStr += '</div>';
 	}
@@ -340,25 +364,43 @@ tr > th{
 		var freeBoardTitleTag = $('#freeBoardTitle');
 		var freeBoardContentTag = $('#freeBoardContent');
 		
-		var jsonDataObj = {
-			freeBoardId: freeBoardIdTag.val(),
-			memberNo: inputMemberNoTag.val(),
-			freeBoardTitle: freeBoardTitleTag.val(),
-			freeBoardContent: freeBoardContentTag.val(),
-			createDate: null,
-			updateDate: null
-		};
+		var formDataObj = new FormData();
+		
+		formDataObj.append('freeBoardId', freeBoardIdTag.val());
+		formDataObj.append('memberNo', inputMemberNoTag.val());
+		formDataObj.append('freeBoardTitle', freeBoardTitleTag.val());
+		formDataObj.append('freeBoardContent', freeBoardContentTag.val());
+		
+		var storeFileListUl = $('#storeFileList');
+		console.log(storeFileListUl);
+		
+		// 이미지를 삭제할 예정인 데이터 수집
+		storeFileListUl.find('span[delFileId]').each(function (index, item) {
+			formDataObj.append('delFreeBoardFileIdList', $(item).attr('delFileId'));
+		});
+		
+		// 새롭게 생긴 파일들 데이터 수집
+		const inputFreeBoardFileArr = $('#inputFreeBoardFile')[0].files;
+		
+		if(inputFreeBoardFileArr.length > 0){
+			for (var i = 0; i < inputFreeBoardFileArr.length; i++) {
+				formDataObj.append('inputFreeBoardFileArr' + i
+					, inputFreeBoardFileArr[i]);
+			}
+		}
 		
 		$.ajax({
-			url: '/freeBoard/' + jsonDataObj.freeBoardId,
+			url: '/freeBoard/' + freeBoardIdTag.val(),
 			method: 'PATCH',
-			contentType: 'application/json',
-			data: JSON.stringify(jsonDataObj),
-			dataType: 'json',
-			success: function (data) {
-// 				alert('일단 게시판 수정 도착하나? '+ data);
+			processData: false,
+			contentType: false,
+			data: formDataObj,
+			success: function (resultMap) {
+// 				alert('386line: 일단 게시판 수정 도착하나? '+ resultMap);
+				var freeBoardVo = resultMap.freeBoardVo;
+				var freeBoardFileList = resultMap.freeBoardFileList;
 				
-				let createDate = new Date(data.createDate)
+				let createDate = new Date(freeBoardVo.createDate)
 					.toLocaleString('ko-KR', {
 					year: 'numeric',
 					month: '2-digit',
@@ -377,23 +419,23 @@ tr > th{
 	    <td class="tableSubject">주제</td>
 	    <td style="width: 735px;" colspan="3">
 	      <input type="text" id="freeBoardTitle" name="freeBoardTitle" 
-	      	value="\${data.freeBoardTitle}" size="100px" />
+	      	value="\${freeBoardVo.freeBoardTitle}" size="100px" />
 	    </td>
 	  </tr>
 	  
 	  <tr>
 	    <td class="tableSubject">작성자</td>
-	    <td class="tableValue">\${data.memberName}</td>
+	    <td class="tableValue">\${freeBoardVo.memberName}</td>
 	    <td class="tableSubject">게시판 번호</td>
 	    <td class="tableValue">
 	      <input id="freeBoardId" name="freeBoardId" 
-	      	value="\${data.freeBoardId}" readonly="readonly" />
+	      	value="\${freeBoardVo.freeBoardId}" readonly="readonly" />
 	    </td>
 	  </tr>
 	  
 	  <tr>
 	    <td class="tableSubject">이메일</td>
-	    <td class="tableValue">\${data.email}</td>
+	    <td class="tableValue">\${freeBoardVo.email}</td>
 	    <td class="tableSubject">작성일자</td>
 	    <td class="tableValue">\${createDate}</td>
 	  </tr>
@@ -407,10 +449,20 @@ tr > th{
 	  </tr>
 	</table>
 	
+	<div id="fileContainer" style="border: 1px solid black;">
+	    <label for="inputFreeBoardFile">파일</label>
+	    <input type="file" id="inputFreeBoardFile" name="freeBoardFileList" multiple>
+	    <ul id="fileList" class="fileUploadList"></ul>
+	    <ul id="storeFileList" class="fileUploadList"></ul>
+	</div>
+	
 	<div>
 	  <span>
-	    <button onclick="pageMoveFreeboardListFnc();">이전페이지</button>
-	    <button onclick="resetRequestFreeBoardUpdateCtrFnc();">수정 완료</button>
+	    <button onclick="pageMoveFreeBoardListFnc(1);">이전페이지</button>
+	    <button onclick="restRequestFreeBoardUpdateCtrFnc();">수정 완료</button>
+		<input type="button" value="삭제하기" 
+			onclick="restRequestFreeBoardDeleteCtrFnc(\${freeBoardVo.freeBoardId}
+			, \${freeBoardVo.memberNo}, 1);">
 	  </span>
 	</div>
 	`;
@@ -418,7 +470,9 @@ tr > th{
 				containerTag.html(htmlStr);
 				
 				let freeBoardContentTag = $('#freeBoardContent');
-				freeBoardContentTag.text(data.freeBoardContent);
+				freeBoardContentTag.text(freeBoardVo.freeBoardContent);
+				
+				storeFileMakeUlFnc(freeBoardFileList);
 				
 			},
 			error: function(xhr, status) {
@@ -434,25 +488,25 @@ tr > th{
 	}
 	
 
-	function pageMoveFreeBoardDetailFnc(tableTdTag) {
-// 		alert(tableTdTag);
+	function restRequestFreeBoardDeleteCtrFnc(freeBoardId, memberNo, curPageStr) {
+		$.ajax({
+			url : '/freeBoard/' + freeBoardId + '?memberNo=' + memberNo 
+				+ '&curPage=' + curPageStr,
+			method : 'DELETE',
+			dataType : 'text',
+			success : function (data) {
+				alert("성공 485line: " + data);
+				
+				var curPage = data;
+				
+				location.href = './list' + '?curPage=' + curPage;
+			},
+			error : function(xhr, status) {
+				console.log(xhr.status);
+				alert(status);
+			}
+		});	
 		
-// 		alert(tableTdTag.parentNode);
-		
-		let parentTr = tableTdTag.parentNode;
-		
-		let freeBoardIdStr = parentTr.children[0].textContent;
-		
-		console.log(freeBoardIdStr);
-		
-// 		alert(freeBoardIdStr + "로 이동");
-		
-		let userSelectFreeBoardIdObj = 
-			document.getElementById('userSelectFreeBoardId');
-		userSelectFreeBoardIdObj.value = freeBoardIdStr;
-		
-		let freeBoardListFormObj = document.getElementById('freeBoardListForm');
-		freeBoardListFormObj.submit();
 	}
 	
 	
@@ -511,9 +565,6 @@ tr > th{
 			name="freeBoardId" value="">
 	
 	</form>
-	
-	
-	
 	
 </body>
 </html>
